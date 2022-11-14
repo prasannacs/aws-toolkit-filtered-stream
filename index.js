@@ -4,7 +4,7 @@ const cors = require('cors')
 const stream = require('./controllers/stream')
 
 const app = express();
-const PORT = process.env.PORT || 5020;
+const PORT = process.env.PORT || 80;
 
 app.use(bodyParser.json({strict:false}));
 app.use(bodyParser.urlencoded({ extended: true }));
