@@ -6,4 +6,10 @@ function sleep(milliseconds) {
     })
 }
 
-module.exports = { sleep };
+function cleanseText(text)  {
+    text = text.replace(/(\r\n|\n|\r)/gm, "");
+    text = text.split('|').join(' ');
+    return text;
+}
+
+module.exports = { sleep, cleanseText };
