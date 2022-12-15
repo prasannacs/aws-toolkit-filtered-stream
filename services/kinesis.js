@@ -85,18 +85,22 @@ async function getRecords(shardIterator, resultCount, counter) {
     else {
       //console.log('Data -- ', data);
       let tweets = [];
+      let users = [];
+      let media = [];
       if (data.Records != null) {
         data.Records.forEach(function (record, index) {
-          //console.log('Data ',JSON.parse(record.Data))
-          tweets.push(JSON.parse(record.Data));
+          tweets = JSON.parse(record.Data).tweets;
+          users = JSON.parse(record.Data).users;
+          media = JSON.parse(record.Data).media;
+          counter += 1;
+          console.log('--- getRecords from Kiensis Stream --- ', counter);
+          if( tweets.length > 0 )  { 
+            s3.writeTweets(tweets);
+          }   
+          if( users.length > 0 )  {
+            console.log('users -- ',users);
+          }
         })
-      }
-      console.log('--- getRecords from Kiensis Stream --- ', tweets.length);
-      if( tweets.length > 0 )  { /* && tweets.length < 51 */
-        // execSync('sleep 3');
-        // await redshift.insertTweets(tweets);
-        counter = counter + tweets.length;
-        s3.writeTweets(tweets);
       }
       if( counter >= resultCount) {
         console.log('=== All Tweets copied to S3 ====');
@@ -113,18 +117,20 @@ async function getRecords(shardIterator, resultCount, counter) {
 async function putRecords(tweets) {
   //console.log('USERS ',tweets.includes.users);
 
-  tweets = tweets.data;
+  // tweets = tweets.data;
+  tweets = tweets.includes;
 
   let records = [];
   if (tweets != null) {
-    console.log('putRecords to Kinesis Stream -- ',tweets.length);
-    tweets.forEach(function (tweet, index) {
+    console.log('putRecords to Kinesis Stream -- ',tweets.tweets.length);
+//    tweets.forEach(function (tweet, index) {
       let record = {
-        Data: Buffer.from(JSON.stringify(tweet)),
+        //Data: Buffer.from(JSON.stringify(tweet)),
+        Data: Buffer.from(JSON.stringify(tweets)),
         PartitionKey: config.aws.kinesis.partitionKey
       }
       records.push(record);
-    })
+//    })
   }
   let params = {
     Records: records,

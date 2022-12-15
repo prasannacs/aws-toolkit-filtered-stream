@@ -101,7 +101,7 @@ function createRedshiftTables() {
   })
 }
 
-async function recentSearch(reqBody, nextToken, resultCount) {
+async function recentSearch(reqBody, nextToken, counter) {
   // validate requestBody before Search
   var rcntSearch = reqBody.recentSearch;
   let query = config.twitter.recentSearchAPI + '&query=' + rcntSearch.query + '&max_results=' + rcntSearch.maxResults;
@@ -122,20 +122,15 @@ async function recentSearch(reqBody, nextToken, resultCount) {
       .then(function (response) {
         if (response.data.data != null) {
           kinesis.putRecords(response.data);
+          counter += 1;
         }
-        if (response.data.meta != undefined && response.data.meta.result_count != undefined) {
-          console.log('Search API Result Count ', response.data.meta.result_count);
-          resultCount = resultCount + response.data.meta.result_count;
-          console.log('Total Tweets streamed with Search API ', resultCount);
-        }
-
         if (response.data.meta != undefined && response.data.meta.next_token != undefined) {
-          recentSearch(reqBody, response.data.meta.next_token, resultCount);
+          recentSearch(reqBody, response.data.meta.next_token, counter);
         }
         // end of search results
         if (response.data.meta != undefined && response.data.meta.next_token === undefined || response.data.meta.next_token === null) {
           // listen for Tweets
-          kinesis.readSequentially(resultCount);
+          kinesis.readSequentially(counter);
         }
         resolve('Recent Search results are persisted in database');
       })
