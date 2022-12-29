@@ -98,12 +98,12 @@ async function getRecords(shardIterator, resultCount, counter) {
             s3.writeTweets(tweets);
           }   
           if( users.length > 0 )  {
-            console.log('users -- ',users);
+            //console.log('users -- ',users);
           }
         })
       }
       if( counter >= resultCount) {
-        console.log('=== All Tweets copied to S3 ====');
+        console.log('=== End of Kinesis stream ====');
         deleteStream();
       }
       if (data.NextShardIterator != null) {

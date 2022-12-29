@@ -139,12 +139,18 @@ async function writeTweets(tweets) {
         sqlCtxAtsVal = sqlCtxAtsVal + context + '\n';
     })
 
-    putObject(sqlValues, 'tweets-' + new Date().toISOString() + '.txt');
-    putObject(sqlEntityAtsVal, 'entities_annotations-' + new Date().toISOString() + '.txt');
-    putObject(sqlCtxAtsVal, 'context_annotations-' + new Date().toISOString() + '.txt');
-    putObject(sqlHashVal, 'entities_hashtags-' + new Date().toISOString() + '.txt');
-    putObject(sqlCashVal, 'entities_cashtags-' + new Date().toISOString() + '.txt');
-    putObject(sqlMentionsVal, 'entities_mentions-' + new Date().toISOString() + '.txt');
+    if( sqlValues.length > 0 )
+        putObject(sqlValues, 'tweets-' + new Date().toISOString() + '.txt');
+    if( sqlEntityAtsVal.length > 0 )
+        putObject(sqlEntityAtsVal, 'entities_annotations-' + new Date().toISOString() + '.txt');
+    if( sqlCtxAtsVal.length > 0 )
+        putObject(sqlCtxAtsVal, 'context_annotations-' + new Date().toISOString() + '.txt');
+    if( sqlHashVal.length > 0 )
+        putObject(sqlHashVal, 'entities_hashtags-' + new Date().toISOString() + '.txt');
+    if( sqlCashVal.length > 0 )
+        putObject(sqlCashVal, 'entities_cashtags-' + new Date().toISOString() + '.txt');
+    if( sqlMentionsVal.length > 0 )
+        putObject(sqlMentionsVal, 'entities_mentions-' + new Date().toISOString() + '.txt');
     //putObject(sqlUrlsVal, 'entities_urls-' + new Date().toISOString() + '.txt');
 }
 
@@ -163,7 +169,7 @@ function filterDomains(annotations) {
 async function listObjects() {
     let params = {
         Bucket: config.aws.s3.bucketName,
-        MaxKeys: 100
+        MaxKeys: 500
     };
 
     return new Promise(function (resolve, reject) {
@@ -190,6 +196,7 @@ function mergeFiles() {
 
     listObjects().then((object) => {
         if (object != null && object.Contents.length > 0) {
+            //console.log('S3 object -- ',object)
             object.Contents.forEach(function (content, index) {
                 if (content.Key.startsWith('tweets-')) {
                     tweets.push(content.Key);
@@ -210,7 +217,6 @@ function mergeFiles() {
                     entities_mentions.push(content.Key);
                 }
             })
-
             aggregateRecords(tweets, 'tweets.txt');
             aggregateRecords(ctx_annotations, 'context-annotations.txt');
             aggregateRecords(entities_annotations, 'entities-annotations.txt');
@@ -226,7 +232,7 @@ async function aggregateRecords(fileArray, fileName) {
     let aggRecords = '';
     for (const [index1, file] of fileArray.entries()) {
         console.log('processing file ', file, ' | ', aggRecords.length);
-        await getS3Contents(file).then((records) => {
+        await getS3Contents(file).then((records) => {  
             for (const [index2, record] of records.entries()) {
                 aggRecords = aggRecords + record + '\n';
                 if (index1 === fileArray.length - 1 && index2 === records.length - 1) {
@@ -241,6 +247,8 @@ async function aggregateRecords(fileArray, fileName) {
 
                 }
             }
+        }).catch(function (error)   {
+            console.log('Cannot read contents from S3 file');
         })
     }
 }
