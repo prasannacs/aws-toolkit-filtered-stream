@@ -53,7 +53,29 @@ async function putObject(body, key) {
     })
 }
 
-async function writeTweets(tweets) {
+async function writeUsers(users, rcntSearch) {
+
+    let sqlUsers = '';
+    if( users != null ) {
+        users.forEach(function (user, index) {
+            let cDate = new Date(user.created_at);
+            let cDateStr = cDate.getFullYear() + '-' + ("0" + (cDate.getMonth() + 1)).slice(-2) + '-' + ("0" + cDate.getDate()).slice(-2) + 'T' + ("0" + cDate.getHours()).slice(-2) + ':' + ("0" + cDate.getMinutes()).slice(-2) + ':' + ("0" + cDate.getSeconds()).slice(-2)
+            sqlUsers = sqlUsers + user.id + '|' + utils.cleanseText(user.name) + '|' + user.username + '|' + cDateStr + '|' + utils.cleanseText(user.description) + '|' + utils.cleanseText(user.location) + '|' + user.pinned_tweet_id + '|' + user.profile_image_url + '|' + user.protected.toString() + '|';
+            sqlUsers = sqlUsers + user.public_metrics.followers_count + '|' + user.public_metrics.following_count + '|' + user.public_metrics.tweet_count + '|' + user.public_metrics.listed_count + '|';
+            sqlUsers = sqlUsers + user.url + '|' + user.verified.toString() + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
+            if (index + 1 < users.length) {
+                sqlUsers = sqlUsers + '\n';
+            }
+
+        })
+    }
+    if( sqlUsers.length > 0 )
+        putObject(sqlUsers, 'users-' + new Date().toISOString() + '.txt');
+
+
+}
+
+async function writeTweets(tweets, rcntSearch) {
 
     let sqlValues = '';
     let sqlEntityAtsVal = '';
@@ -71,10 +93,10 @@ async function writeTweets(tweets) {
             // console.log('----');
             let cDate = new Date(tweet.created_at);
             let cDateStr = cDate.getFullYear() + '-' + ("0" + (cDate.getMonth() + 1)).slice(-2) + '-' + ("0" + cDate.getDate()).slice(-2) + 'T' + ("0" + cDate.getHours()).slice(-2) + ':' + ("0" + cDate.getMinutes()).slice(-2) + ':' + ("0" + cDate.getSeconds()).slice(-2)
-            let tweetURL = 'https://twitter.com/twitter/status' + tweet.id;
+            let tweetURL = 'https://twitter.com/twitter/status/' + tweet.id;
             sqlValues = sqlValues + tweet.id + '|' + utils.cleanseText(tweet.text) + '|' + tweet.author_id + '|' + tweet.conversation_id + '|' + cDateStr + '|' + 'null' + '|' + tweet.in_reply_to_user_id + '|' + tweet.lang + '|';
             sqlValues = sqlValues + tweet.public_metrics.like_count + '|' + tweet.public_metrics.reply_count + '|' + tweet.public_metrics.quote_count + '|' + tweet.public_metrics.retweet_count + '|'
-            sqlValues = sqlValues + tweet.possibly_sensitive.toString() + '|' + tweet.reply_settings + '|' + tweet.source + '|' + tweetURL
+            sqlValues = sqlValues + tweet.possibly_sensitive.toString() + '|' + tweet.reply_settings + '|' + tweet.source + '|' + tweetURL + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
             if (index + 1 < tweets.length) {
                 sqlValues = sqlValues + '\n';
             }
@@ -83,7 +105,7 @@ async function writeTweets(tweets) {
                 if (tweet.entities.annotations.length > 0) {
                     tweet.entities.annotations.forEach(function (entity, index_entity) {
                         let entity_name = entity.normalized_text.replace(/(\r\n|\n|\r)/gm, "");
-                        sqlEntityAtsVal = sqlEntityAtsVal + tweet.id + '|' + '0|' + entity.type + '|' + entity_name;
+                        sqlEntityAtsVal = sqlEntityAtsVal + tweet.id + '|' + '0|' + entity.type + '|' + entity_name + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
                         sqlEntityAtsVal = sqlEntityAtsVal + '\n';
                     })
                 }
@@ -92,7 +114,7 @@ async function writeTweets(tweets) {
             if (tweet.entities != null && tweet.entities.hashtags != null) {
                 if (tweet.entities.hashtags.length > 0) {
                     tweet.entities.hashtags.forEach(function (hashtag, index) {
-                        sqlHashVal = sqlHashVal + tweet.id + '|' + hashtag.tag;
+                        sqlHashVal = sqlHashVal + tweet.id + '|' + hashtag.tag + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
                         sqlHashVal = sqlHashVal + '\n';
                     })
                 }
@@ -100,7 +122,7 @@ async function writeTweets(tweets) {
             if (tweet.entities != null && tweet.entities.cashtags != null) {
                 if (tweet.entities.cashtags.length > 0) {
                     tweet.entities.cashtags.forEach(function (cashtag, index) {
-                        sqlCashVal = sqlCashVal + tweet.id + '|' + cashtag.tag;
+                        sqlCashVal = sqlCashVal + tweet.id + '|' + cashtag.tag + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
                         sqlCashVal = sqlCashVal + '\n';
                     })
                 }
@@ -108,7 +130,7 @@ async function writeTweets(tweets) {
             if (tweet.entities != null && tweet.entities.mentions != null) {
                 if (tweet.entities.mentions.length > 0) {
                     tweet.entities.mentions.forEach(function (mention, index) {
-                        sqlMentionsVal = sqlMentionsVal + tweet.id + '|' + mention.username + '|' + mention.id;
+                        sqlMentionsVal = sqlMentionsVal + tweet.id + '|' + mention.username + '|' + mention.id + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
                         sqlMentionsVal = sqlMentionsVal + '\n';
                     })
                 }
@@ -116,7 +138,7 @@ async function writeTweets(tweets) {
             if (tweet.entities != null && tweet.entities.urls != null) {
                 if (tweet.entities.urls.length > 0) {
                     tweet.entities.urls.forEach(function (url, index) {
-                        sqlUrlsVal = sqlUrlsVal + tweet.id + '|' + url.url + '|' + url.expanded_url + '|' + url.display_url + '|' + url.status + '|' + url.title + '|' + 'desc|' + url.unwound_url;
+                        sqlUrlsVal = sqlUrlsVal + tweet.id + '|' + url.url + '|' + url.expanded_url + '|' + url.display_url + '|' + url.status + '|' + url.title + '|' + 'desc|' + url.unwound_url + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
                         sqlUrlsVal = sqlUrlsVal + '\n';
                     })
                 }
@@ -125,7 +147,7 @@ async function writeTweets(tweets) {
             if (tweet.context_annotations != undefined && tweet.context_annotations != null) {
                 if (tweet.context_annotations.length > 0) {
                     tweet.context_annotations.forEach(function (context, index_ctx) {
-                        let str = sqlCtxAtsVal + tweet.id + '|' + context.domain.id + '|' + context.domain.name + '|desc|' + context.entity.id + '|' + context.entity.name;
+                        let str = sqlCtxAtsVal + tweet.id + '|' + context.domain.id + '|' + context.domain.name + '|desc|' + context.entity.id + '|' + context.entity.name + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
                         ctx_annotations.push(str);
                     })
                 }
@@ -193,6 +215,7 @@ function mergeFiles() {
     let entities_cashtags = [];
     let entities_hashtags = [];
     let entities_mentions = [];
+    let users = [];
 
     listObjects().then((object) => {
         if (object != null && object.Contents.length > 0) {
@@ -216,6 +239,10 @@ function mergeFiles() {
                 if (content.Key.startsWith('entities_mentions-')) {
                     entities_mentions.push(content.Key);
                 }
+                if (content.Key.startsWith('users-')) {
+                    users.push(content.Key);
+                }
+
             })
             aggregateRecords(tweets, 'tweets.txt');
             aggregateRecords(ctx_annotations, 'context-annotations.txt');
@@ -223,6 +250,7 @@ function mergeFiles() {
             aggregateRecords(entities_mentions,'entities-mentions.txt');
             aggregateRecords(entities_hashtags,'entities-hashtags.txt');
             aggregateRecords(entities_cashtags,'entities-cashtags.txt');
+            aggregateRecords(users,'users.txt');
         }
     })
 }
@@ -275,5 +303,5 @@ function getS3Contents(fileName) {
     });
 }
 
-module.exports = { createBucket, putObject, writeTweets, listObjects, deleteObject, mergeFiles };
+module.exports = { createBucket, putObject, writeTweets, listObjects, deleteObject, mergeFiles, writeUsers };
 

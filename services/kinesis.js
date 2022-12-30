@@ -56,7 +56,7 @@ async function deleteStream() {
   })
 }
 
-async function readSequentially(resultCount) {
+async function readSequentially(resultCount, rcntSearch) {
   let params = {
     ShardId: 'shardId-000000000000', /* required */
     ShardIteratorType: 'TRIM_HORIZON',
@@ -68,12 +68,12 @@ async function readSequentially(resultCount) {
     if (err) console.log(err, err.stack); // an error occurred
     else {
       console.log('Triggering GET RECORDS ',resultCount);
-      getRecords(data.ShardIterator, resultCount, 0);
+      getRecords(data.ShardIterator, resultCount, 0, rcntSearch);
     }
   });
 }
 
-async function getRecords(shardIterator, resultCount, counter) {
+async function getRecords(shardIterator, resultCount, counter, rcntSearch) {
   let params = {
     ShardIterator: shardIterator,
     Limit: '1000'
@@ -95,10 +95,10 @@ async function getRecords(shardIterator, resultCount, counter) {
           counter += 1;
           console.log('--- getRecords from Kiensis Stream --- ', counter);
           if( tweets.length > 0 )  { 
-            s3.writeTweets(tweets);
+            s3.writeTweets(tweets, rcntSearch);
           }   
           if( users.length > 0 )  {
-            //console.log('users -- ',users);
+            s3.writeUsers(users, rcntSearch);
           }
         })
       }
@@ -108,29 +108,23 @@ async function getRecords(shardIterator, resultCount, counter) {
       }
       if (data.NextShardIterator != null) {
         //console.log(' -data.NextShardIterator - ', data.NextShardIterator);
-        getRecords(data.NextShardIterator, resultCount, counter);
+        getRecords(data.NextShardIterator, resultCount, counter, rcntSearch);
       }
     }
   });
 }
 
 async function putRecords(tweets) {
-  //console.log('USERS ',tweets.includes.users);
-
-  // tweets = tweets.data;
   tweets = tweets.includes;
 
   let records = [];
   if (tweets != null) {
     console.log('putRecords to Kinesis Stream -- ',tweets.tweets.length);
-//    tweets.forEach(function (tweet, index) {
       let record = {
-        //Data: Buffer.from(JSON.stringify(tweet)),
         Data: Buffer.from(JSON.stringify(tweets)),
         PartitionKey: config.aws.kinesis.partitionKey
       }
       records.push(record);
-//    })
   }
   let params = {
     Records: records,

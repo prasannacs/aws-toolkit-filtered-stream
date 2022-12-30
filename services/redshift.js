@@ -11,18 +11,6 @@ var redshiftdata = new AWS.RedshiftData({ region: config.aws.env.region });
 
 const client = new RedshiftServerless({ region: config.aws.env.region });
 
-const params = {
-    ClusterIdentifier: "Cluster1", // Required
-    NodeType: "dc2.large", //Required
-    MasterUsername: "master", // Required - must be lowercase
-    MasterUserPassword: "Bond0505", // Required - must contain at least one uppercase letter, and one number
-    ClusterType: "single-node", // Required
-    //  IAMRoleARN: "IAM_ROLE_ARN", // Optional - the ARN of an IAM role with permissions your cluster needs to access other AWS services on your behalf, such as Amazon S3.
-    //  ClusterSubnetGroupName: "CLUSTER_SUBNET_GROUPNAME", //Optional - the name of a cluster subnet group to be associated with this cluster. Defaults to 'default' if not specified.
-    //  DBName: "DATABASE_NAME", // Optional - defaults to 'dev' if not specified
-    //  Port: "PORT_NUMBER", // Optional - defaults to '5439' if not specified
-};
-
 async function createRedShiftCluster() {
     try {
         const data = await redshiftClient.send(new CreateClusterCommand(params));
@@ -84,15 +72,15 @@ async function getWorkgroup() {
 
 
 async function createTables() {
-    let sql_context_annotations = "CREATE table context_annotations (tweet_id VARCHAR(50) NOT NULL, domain_id VARCHAR(50), domain_name VARCHAR(50), domain_description VARCHAR(200), entity_id VARCHAR(50), entity_name VARCHAR(200))"
-    let sql_entities_annotations = "CREATE table entities_annotations (tweet_id VARCHAR(50) NOT NULL, probability INT, type VARCHAR(20), normalized_text VARCHAR(50))"
-    let sql_entities_cashtags = "CREATE table entities_cashtags (tweet_id VARCHAR(50) NOT NULL, cashtag VARCHAR(50))"
-    let sql_entities_hashtags = "CREATE table entities_hashtags (tweet_id VARCHAR(50) NOT NULL, hashtag VARCHAR(50))"
-    let sql_entities_mentions = "CREATE table entities_mentions (tweet_id VARCHAR(50) NOT NULL, username VARCHAR(50), user_id VARCHAR(50))"
+    let sql_context_annotations = "CREATE table context_annotations (tweet_id VARCHAR(50) NOT NULL, domain_id VARCHAR(50), domain_name VARCHAR(50), domain_description VARCHAR(200), entity_id VARCHAR(50), entity_name VARCHAR(200), category VARCHAR(50), subcategory VARCHAR(50))"
+    let sql_entities_annotations = "CREATE table entities_annotations (tweet_id VARCHAR(50) NOT NULL, probability INT, type VARCHAR(20), normalized_text VARCHAR(50), category VARCHAR(50), subcategory VARCHAR(50))"
+    let sql_entities_cashtags = "CREATE table entities_cashtags (tweet_id VARCHAR(50) NOT NULL, cashtag VARCHAR(50), category VARCHAR(50), subcategory VARCHAR(50))"
+    let sql_entities_hashtags = "CREATE table entities_hashtags (tweet_id VARCHAR(50) NOT NULL, hashtag VARCHAR(50), category VARCHAR(50), subcategory VARCHAR(50))"
+    let sql_entities_mentions = "CREATE table entities_mentions (tweet_id VARCHAR(50) NOT NULL, username VARCHAR(50), user_id VARCHAR(50), category VARCHAR(50), subcategory VARCHAR(50))"
     //let sql_entities_urls = "CREATE table entities_urls (tweet_id VARCHAR(50) NOT NULL, url VARCHAR(100), expanded_url VARCHAR(900), display_url VARCHAR(200), status VARCHAR(50), title VARCHAR(200), description VARCHAR(500), unwound_url VARCHAR(500))"
-    let sql_referenced_tweets = "CREATE table referenced_tweets (tweet_id VARCHAR(50) NOT NULL, referenced_tweet_type VARCHAR(50), referenced_tweet_id VARCHAR(50))"
-    let sql_users = "CREATE table users(user_id VARCHAR(50) NOT NULL, name VARCHAR(100) NOT NULL, username VARCHAR(50) NOT NULL, created_at DATETIME, description VARCHAR(300), location VARCHAR(200), pinned_tweet_id VARCHAR(50), profile_image_url VARCHAR(300), protected VARCHAR(20), followers_count INT, following_count INT, tweet_count INT, listed_count INT, url VARCHAR(200), verified VARCHAR(20), PRIMARY KEY (user_id))"
-    let sql_tweets = "CREATE table tweets (tweet_id VARCHAR(100) NOT NULL, tweet_text VARCHAR(400) NOT NULL, author_id VARCHAR(100), conversation_id VARCHAR(100), created_at DATETIME, geo_place_id VARCHAR(50), in_reply_to_user_id VARCHAR(50), lang VARCHAR(10), like_count INT, reply_count INT, quote_count INT, retweet_count INT, possibly_sensitive BOOLEAN, reply_settings VARCHAR(20), source VARCHAR(150), tweet_url VARCHAR(100), PRIMARY KEY (tweet_id))"
+    let sql_referenced_tweets = "CREATE table referenced_tweets (tweet_id VARCHAR(50) NOT NULL, referenced_tweet_type VARCHAR(50), referenced_tweet_id VARCHAR(50), category VARCHAR(50), subcategory VARCHAR(50))"
+    let sql_users = "CREATE table users(user_id VARCHAR(50) NOT NULL, name VARCHAR(100) NOT NULL, username VARCHAR(50) NOT NULL, created_at DATETIME, description VARCHAR(900), location VARCHAR(200), pinned_tweet_id VARCHAR(50), profile_image_url VARCHAR(300), protected BOOLEAN, followers_count INT, following_count INT, tweet_count INT, listed_count INT, url VARCHAR(200), verified BOOLEAN, PRIMARY KEY (user_id), category VARCHAR(50), subcategory VARCHAR(50))"
+    let sql_tweets = "CREATE table tweets (tweet_id VARCHAR(100) NOT NULL, tweet_text VARCHAR(400) NOT NULL, author_id VARCHAR(100), conversation_id VARCHAR(100), created_at DATETIME, geo_place_id VARCHAR(50), in_reply_to_user_id VARCHAR(50), lang VARCHAR(10), like_count INT, reply_count INT, quote_count INT, retweet_count INT, possibly_sensitive BOOLEAN, reply_settings VARCHAR(20), source VARCHAR(150), tweet_url VARCHAR(100), PRIMARY KEY (tweet_id), category VARCHAR(50), subcategory VARCHAR(50))"
 
     let sqlArr = [];
     sqlArr.push(sql_context_annotations, sql_entities_annotations, sql_entities_cashtags, sql_entities_hashtags);
@@ -272,6 +260,8 @@ async function copyCommand(fileName) {
         tableName = 'entities_cashtags'
     if (fileName.startsWith('entities-mentions'))
         tableName = 'entities_mentions'
+    if (fileName.startsWith('users'))
+        tableName = 'users'
 
     let copySql = 'copy '+tableName+' from \'s3://'+config.aws.s3.bucketName+'/'+fileName+ '\' CREDENTIALS \'aws_access_key_id='+config.aws.secrets.aws_access_key_id+';aws_secret_access_key='+config.aws.secrets.aws_secret_access_key+'\''+' delimiter \'|\''+' region \''+config.aws.env.region + '\' timeformat '+'\'YYYY-MM-DDTHH:MI:SS\''; 
     let params = { 'Database': config.aws.redshift.dbName, 'WorkgroupName': config.aws.redshift.workgroup, 'Sql': copySql }

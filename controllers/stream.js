@@ -130,7 +130,7 @@ async function recentSearch(reqBody, nextToken, counter) {
         // end of search results
         if (response.data.meta != undefined && response.data.meta.next_token === undefined || response.data.meta.next_token === null) {
           // listen for Tweets
-          kinesis.readSequentially(counter);
+          kinesis.readSequentially(counter, rcntSearch);
         }
         resolve('Recent Search results are persisted in database');
       })
