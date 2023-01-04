@@ -56,7 +56,7 @@ async function putObject(body, key) {
 async function writeUsers(users, rcntSearch) {
 
     let sqlUsers = '';
-    if( users != null ) {
+    if (users != null) {
         users.forEach(function (user, index) {
             let cDate = new Date(user.created_at);
             let cDateStr = cDate.getFullYear() + '-' + ("0" + (cDate.getMonth() + 1)).slice(-2) + '-' + ("0" + cDate.getDate()).slice(-2) + 'T' + ("0" + cDate.getHours()).slice(-2) + ':' + ("0" + cDate.getMinutes()).slice(-2) + ':' + ("0" + cDate.getSeconds()).slice(-2)
@@ -69,7 +69,7 @@ async function writeUsers(users, rcntSearch) {
 
         })
     }
-    if( sqlUsers.length > 0 )
+    if (sqlUsers.length > 0)
         putObject(sqlUsers, 'users-' + new Date().toISOString() + '.txt');
 
 
@@ -161,17 +161,17 @@ async function writeTweets(tweets, rcntSearch) {
         sqlCtxAtsVal = sqlCtxAtsVal + context + '\n';
     })
 
-    if( sqlValues.length > 0 )
+    if (sqlValues.length > 0)
         putObject(sqlValues, 'tweets-' + new Date().toISOString() + '.txt');
-    if( sqlEntityAtsVal.length > 0 )
+    if (sqlEntityAtsVal.length > 0)
         putObject(sqlEntityAtsVal, 'entities_annotations-' + new Date().toISOString() + '.txt');
-    if( sqlCtxAtsVal.length > 0 )
+    if (sqlCtxAtsVal.length > 0)
         putObject(sqlCtxAtsVal, 'context_annotations-' + new Date().toISOString() + '.txt');
-    if( sqlHashVal.length > 0 )
+    if (sqlHashVal.length > 0)
         putObject(sqlHashVal, 'entities_hashtags-' + new Date().toISOString() + '.txt');
-    if( sqlCashVal.length > 0 )
+    if (sqlCashVal.length > 0)
         putObject(sqlCashVal, 'entities_cashtags-' + new Date().toISOString() + '.txt');
-    if( sqlMentionsVal.length > 0 )
+    if (sqlMentionsVal.length > 0)
         putObject(sqlMentionsVal, 'entities_mentions-' + new Date().toISOString() + '.txt');
     //putObject(sqlUrlsVal, 'entities_urls-' + new Date().toISOString() + '.txt');
 }
@@ -188,94 +188,120 @@ function filterDomains(annotations) {
     return newArray;
 }
 
-async function listObjects() {
+async function listObjects(nextToken, keys) {
     let params = {
         Bucket: config.aws.s3.bucketName,
-        MaxKeys: 500
+        MaxKeys: 1000
     };
 
-    return new Promise(function (resolve, reject) {
-        s3.listObjects(params, function (err, data) {
+    if (nextToken != null) {
+        params.ContinuationToken = nextToken;
+    }
+
+    let p = new Promise(function (resolve, reject) {
+        s3.listObjectsV2(params, function (err, data) {
             if (err) {
                 console.log(err, err.stack);
                 reject(err);
             }
             else {
-                //console.log(data);
-                resolve(data);
+                if (data.Contents != null) {
+                    data.Contents.forEach(function (object, index) {
+                        keys.push(object.Key);
+                    })
+                }
+                if (data.IsTruncated === true) {
+                    console.log('ContinuationToken -- ', data.NextContinuationToken);
+                    listObjects(data.NextContinuationToken, keys)
+                }
+                if (data.IsTruncated === false) {
+                    resolve('All done');
+                }
             }
         })
     })
+    p.finally(() => {
+        console.log('Total keys from S3 ', keys.length);
+        let ctx_annotations = [];
+        let tweets = [];
+        let entities_annotations = [];
+        let entities_cashtags = [];
+        let entities_hashtags = [];
+        let entities_mentions = [];
+        let users = [];
+
+        keys.forEach(function (key, index) {
+            if (key.startsWith('tweets-')) {
+                tweets.push(key);
+            }
+            if (key.startsWith('context_annotations-')) {
+                ctx_annotations.push(key);
+            }
+            if (key.startsWith('entities_annotations-')) {
+                entities_annotations.push(key);
+            }
+            if (key.startsWith('entities_cashtags-')) {
+                entities_cashtags.push(key);
+            }
+            if (key.startsWith('entities_hashtags-')) {
+                entities_hashtags.push(key);
+            }
+            if (key.startsWith('entities_mentions-')) {
+                entities_mentions.push(key);
+            }
+            if (key.startsWith('users-')) {
+                users.push(key);
+            }
+        })
+        console.log('Tweets files ',tweets.length)
+        console.log('Context annotations files ',ctx_annotations.length)
+        console.log('Entities annotations files ',entities_annotations.length)
+        console.log('Mentions files ',entities_mentions.length)
+        console.log('Hashtags files ',entities_hashtags.length)
+        console.log('Cashtags files ',entities_cashtags.length)
+        console.log('Users files ',users.length)
+        aggregateRecords(tweets, 'tweets.txt');
+        aggregateRecords(ctx_annotations, 'context-annotations.txt');
+        aggregateRecords(entities_annotations, 'entities-annotations.txt');
+        aggregateRecords(entities_mentions, 'entities-mentions.txt');
+        aggregateRecords(entities_hashtags, 'entities-hashtags.txt');
+        aggregateRecords(entities_cashtags, 'entities-cashtags.txt');
+        aggregateRecords(users, 'users.txt');
+
+    })
+
 }
 
-function mergeFiles() {
-    let ctx_annotations = [];
-    let tweets = [];
-    let entities_annotations = [];
-    let entities_cashtags = [];
-    let entities_hashtags = [];
-    let entities_mentions = [];
-    let users = [];
-
-    listObjects().then((object) => {
-        if (object != null && object.Contents.length > 0) {
-            //console.log('S3 object -- ',object)
-            object.Contents.forEach(function (content, index) {
-                if (content.Key.startsWith('tweets-')) {
-                    tweets.push(content.Key);
-                }
-                if (content.Key.startsWith('context_annotations-')) {
-                    ctx_annotations.push(content.Key);
-                }
-                if (content.Key.startsWith('entities_annotations-')) {
-                    entities_annotations.push(content.Key);
-                }
-                if (content.Key.startsWith('entities_cashtags-')) {
-                    entities_cashtags.push(content.Key);
-                }
-                if (content.Key.startsWith('entities_hashtags-')) {
-                    entities_hashtags.push(content.Key);
-                }
-                if (content.Key.startsWith('entities_mentions-')) {
-                    entities_mentions.push(content.Key);
-                }
-                if (content.Key.startsWith('users-')) {
-                    users.push(content.Key);
-                }
-
-            })
-            aggregateRecords(tweets, 'tweets.txt');
-            aggregateRecords(ctx_annotations, 'context-annotations.txt');
-            aggregateRecords(entities_annotations, 'entities-annotations.txt');
-            aggregateRecords(entities_mentions,'entities-mentions.txt');
-            aggregateRecords(entities_hashtags,'entities-hashtags.txt');
-            aggregateRecords(entities_cashtags,'entities-cashtags.txt');
-            aggregateRecords(users,'users.txt');
-        }
-    })
+async function mergeFiles() {
+    let keys = [];
+    listObjects(null, keys);
 }
 
 
 async function aggregateRecords(fileArray, fileName) {
+    // just trigger copy command if no data files
+    if( fileArray.length === 0 )    {
+        redshift.copyCommand(fileName);
+    }
     let aggRecords = '';
     for (const [index1, file] of fileArray.entries()) {
         console.log('processing file ', file, ' | ', aggRecords.length);
-        await getS3Contents(file).then((records) => {  
+        await getS3Contents(file).then((records) => {
             for (const [index2, record] of records.entries()) {
                 aggRecords = aggRecords + record + '\n';
                 if (index1 === fileArray.length - 1 && index2 === records.length - 1) {
                     console.log('final file ', file, ' - ', aggRecords.length);
                     //return aggRecords;
-                    putObject(aggRecords,fileName).then((data)    =>  {
+                    putObject(aggRecords, fileName).then((data) => {
                         redshift.copyCommand(fileName);
-                        for(let file of fileArray ) {
+                        for (let file of fileArray) {
                             deleteObject(file);
                         }
                     });
 
                 }
             }
-        }).catch(function (error)   {
+        }).catch(function (error) {
             console.log('Cannot read contents from S3 file');
         })
     }
