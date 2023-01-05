@@ -1,40 +1,13 @@
 const express = require("express");
 const config = require('../config.js');
-const keyspaces = require('.././services/keyspaces.js');
 const redshift = require('.././services/redshift.js');
 const kinesis = require('.././services/kinesis.js');
 const s3 = require('.././services/s3.js');
 const utils = require('.././services/utils.js');
-const cassandra = require('cassandra-driver');
-const sigV4 = require('aws-sigv4-auth-cassandra-plugin');
 const fs = require('fs');
 const axios = require("axios").default;
-const axiosRetry = require("axios-retry");
 
 const router = express.Router();
-
-const auth = new sigV4.SigV4AuthProvider({
-  region: config.aws.env.region,
-  accessKeyId: config.aws.accessKeys.id,
-  secretAccessKey: config.aws.accessKeys.secret
-});
-
-const host = 'cassandra.' + config.aws.env.region + '.amazonaws.com'
-const sslOptions = {
-  ca: [
-    fs.readFileSync(__dirname + '/../resources/sf-class2-root.crt')
-  ],
-  host: host,
-  rejectUnauthorized: true
-};
-
-const client = new cassandra.Client({
-  contactPoints: [host],
-  localDataCenter: config.aws.env.region,
-  authProvider: auth,
-  sslOptions: sslOptions,
-  protocolOptions: { port: 9142 }
-});
 
 router.get("/merge", function (req, res) {
   s3.mergeFiles();
