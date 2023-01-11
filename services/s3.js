@@ -95,7 +95,7 @@ async function writeTweets(tweets, rcntSearch) {
             let cDateStr = cDate.getFullYear() + '-' + ("0" + (cDate.getMonth() + 1)).slice(-2) + '-' + ("0" + cDate.getDate()).slice(-2) + 'T' + ("0" + cDate.getHours()).slice(-2) + ':' + ("0" + cDate.getMinutes()).slice(-2) + ':' + ("0" + cDate.getSeconds()).slice(-2)
             let tweetURL = 'https://twitter.com/twitter/status/' + tweet.id;
             sqlValues = sqlValues + tweet.id + '|' + utils.cleanseText(tweet.text) + '|' + tweet.author_id + '|' + tweet.conversation_id + '|' + cDateStr + '|' + 'null' + '|' + tweet.in_reply_to_user_id + '|' + tweet.lang + '|';
-            sqlValues = sqlValues + tweet.public_metrics.like_count + '|' + tweet.public_metrics.reply_count + '|' + tweet.public_metrics.quote_count + '|' + tweet.public_metrics.retweet_count + '|'
+            sqlValues = sqlValues + tweet.public_metrics.like_count + '|' + tweet.public_metrics.reply_count + '|' + tweet.public_metrics.quote_count + '|' + tweet.public_metrics.retweet_count + '|' + tweet.public_metrics.impression_count + '|'
             sqlValues = sqlValues + tweet.possibly_sensitive.toString() + '|' + tweet.reply_settings + '|' + tweet.source + '|' + tweetURL + '|' + rcntSearch.category + '|' + rcntSearch.subCategory;
             if (index + 1 < tweets.length) {
                 sqlValues = sqlValues + '\n';
